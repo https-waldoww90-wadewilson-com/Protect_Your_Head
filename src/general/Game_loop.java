@@ -2,8 +2,7 @@
 package general;
 
 import java.applet.Applet;
-import java.awt.Graphics;
-import java.awt.Image;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
@@ -13,37 +12,46 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 public class Game_loop extends Applet implements Runnable, KeyListener {
-
-//game is divided into levels of increasing difficulty, where shit falls out of the sky
-//and dave has to either manoevre s.t. his head doesn't get hit or position himself under a
-//temporary block of concrete (destroyed after 3 hits), dirt (2 hits), or grass (destroyed after 1 hit)
-//as you can see there's a strategy to it since multiple blocks will pop up at once
-//with every shot to the head, character flashes then gets bigger
-//game over once jumping causes head to disappear - go to cutscene
-//where his head is in the clouds and a ton of shit hits him in the head til he dies
-//occassionally power ups will pop on blocks that will create a temporary shield above his head
-//made of either concrete, dirt, or grass
 	
 	// public
-	public int X, Y;
-	public BufferedImage background, foreground;
-	public BufferedImage chrctr; // animation state
+	public BufferedImage state; // animation state
+	public static int score=0, lvl=1, goal=lvl*150;
 	// private
+	private static int guyX, guyY;
+	private static int guyHeight, guyWidth;
 	private int timer;
 	private int rightorleft; // '1' if facing right; '2' if facing left; never '0'
 	private int rightJumporleftJump; // '1' if its a right jump; '2' if its a left jump; '0' if its neither
-	private int lvl=0;
 	private double dCounter = 4;
 	private boolean bJump, bLeft, bRight;
 	private BufferedImage w0, w0r, w1, w1r, w2, w2r, w3, w3r, w4, w4r;
 	
+	public static int guyX() {
+		return guyX;
+	}
+	public static int guyY() {
+		return guyY;
+	}
+	public static int guyHeight() {
+		return guyHeight;
+	}
+	public static int guyWidth() {
+		return guyWidth;
+	}
+	public boolean guygroundCollision() {
+		//System.out.println(guyX() + " " + guyY());
+		for (Rectangle block:Main.groundList) {
+			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {
+	    		if (guyY+guyHeight >= block.y && guyY <= block.y + block.height) {
+					return true;
+	    		} 
+	    	}		
+		}
+		return false;
+    }
 	@Override
 	public void run() {
-		X=50;
-		Y=100;
 		try {
-			background = ImageIO.read(new File("background.png"));
-			foreground = ImageIO.read(new File("foreground.png"));
 			w0 = ImageIO.read(new File("w0.png"));
 			w0r = ImageIO.read(new File("w0r.png"));
 			w1 = ImageIO.read(new File("w1.png"));
@@ -57,28 +65,31 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} 
+		guyWidth=w0.getWidth();
+		guyHeight=w0.getHeight();
 		rightorleft=1;
 		rightJumporleftJump=0;
-		chrctr = w0;
-		Y=196; // measured from top
+		state = w0;
+		guyX=50;
+		guyY=196;
 		while (true) {	
-			if (Y <= 196 && bJump !=true){
-				Y+=5;//downward speed
-			}
+			//System.out.println(X+ " " + Y);
+			
+			/* START: STATE CONTROLLER */
 			timer++;
-			if (timer >= 20) {
+			if (timer >= 25) {
 				timer=0;
 			}
 			if (bLeft == true && bRight == true && bJump!=true) {
 				if (rightorleft == 1) {
 					switch(timer) {
-						case 0: chrctr = w0;
+						case 0: state = w0;
 						timer=0;
 						break;
 					}
 				} else {
 					switch(timer) {
-						case 0: chrctr = w0r;
+						case 0: state = w0r;
 						timer=0;
 						break;
 					}
@@ -87,110 +98,107 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 				
 				if (bRight ==true) {
 					switch(timer) {
-						case 0: chrctr = w0;break;
-						case 5:chrctr = w1;break;
-						case 10: chrctr = w3;break;
-						case 15: chrctr = w4;break;
+						case 0: state = w0;break;
+						case 5: state = w1;break;
+						case 10: state = w2; break;
+						case 15: state = w3;break;
+						case 20: state = w4;break;
 					}
 				} 
 				if (bLeft == true) {
 					switch(timer) {
-						case 0: chrctr = w0r;break;
-						case 5:chrctr = w1r;break;
-						case 10: chrctr = w3r;break;
-						case 15: chrctr = w4r;break;
+						case 0: state = w0r;break;
+						case 5: state = w1r;break;
+						case 10: state = w2r;break;
+						case 15: state = w3r;break;
+						case 20: state = w4r;break;
 					}
 				}
 			}
-			if (bRight != true && bLeft != true) {
-				if (timer <=5 && bRight == true) {
-					chrctr = w1;
-				}
-				if (timer >= 5 && timer <=10 && bRight == true) {
-					chrctr = w2;
-				}
-				if (timer >= 10 && timer <=5 && bRight == true) {
-					chrctr = w3;
-				}
-				if (timer >= 10 && timer <=15 && bRight == true) {
-					chrctr = w4;
-				}
-			}		
+			/* END: STATE CONTROLLER */
+			
+			/* START: HORIZONTAL MOVEMENT */
 			if (bJump == true && bRight == true && bLeft == true) {
 				if (rightJumporleftJump == 1) {
-					if (X<=516) {
-						X+=4;	
+					if (guyX<=516) {
+						guyX+=4;	
 					} else {
-						X=-20;
-						X+=4;
-						lvl++;
+						guyX=-20;
+						guyX+=4;
 					}
 						
 				} else if (rightJumporleftJump==2) {
-					if (X>=-11) {
-						X-=4;	
-					}			
+					if (guyX>=-11) {
+						guyX-=4;	
+					} else {
+						guyX=520;
+						guyX-=4;
+					}
 				}
 			} else {
-				if (bLeft == true && Y>=196 || rightJumporleftJump == 2 && bJump==true) {
-					if (X>=-10) {
-						X-=5;
+				if (bLeft == true && guyY>=196 || rightJumporleftJump == 2 && bJump==true) {
+					if (guyX>=-10) {
+						guyX-=5;
+					} else {
+						guyX=520;
+						guyX-=5;
 					}
 					//System.out.println(X);
 				}
-				if (bRight == true && Y>=196|| rightJumporleftJump == 1 && bJump==true) {
-					if (X<=515) {
-						X+=5;
+				if (bRight == true && guyY>=196|| rightJumporleftJump == 1 && bJump==true) {
+					if (guyX<=515) {
+						guyX+=5;
 					} else {
-						X=-20;
-						X+=5;
-						lvl++;
+						guyX=-20;
+						guyX+=5;
 					}	
 					//System.out.println(X);
 				}
-			}			
+			}	
+			/* END: HORIZONTAL MOVEMENT */
+			
 			if (bJump == true) {
 				dCounter +=0.05;
-				Y = Y + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
+				guyY = guyY + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
 				//*4 -> amplitude of jump
 				if(dCounter>=7){	
-					Y=196;
 					bJump=false;
 					rightJumporleftJump=0;
 					dCounter=4;//bottom of jump		
 					if (rightorleft == 1) {		
-						chrctr = w0;//position to which he snaps back
+						state = w0;//position to which he snaps back
 					} else {
-						chrctr = w0r;//position to which he snaps back
+						state = w0r;//position to which he snaps back
 					}
 				} 
 				
-				if (rightorleft==1 && Y!=196) {
+				if (rightorleft==1 && guyY!=196) {
 					if (bJump == true && bRight == true && bLeft == true) {
-						chrctr = w0;
+						state = w0;
 					} else {
 						if (rightJumporleftJump==0 && bRight==false) {
-							chrctr=w0;
+							state=w0;
 						} else {
-							chrctr = w3;
+							state = w3;
 						}					
 					}						
 				}
 				
-				if (rightorleft==2 && Y!=196) {				
+				if (rightorleft==2 && guyY!=196) {				
 					if (bJump == true && bRight == true && bLeft == true) {
-						chrctr = w0r;
+						state = w0r;
 					} else {
 						if (rightJumporleftJump==0 && bLeft == false) {
-							chrctr=w0r;
+							state=w0r;
 						} else {
-							chrctr = w3r;
+							state = w3r;
 						}	
 					}
 				}
 			}	
-			if (Y >= 196) {
-				Y=196;
+			
+			if (guyY >= 196) {
+				guyY=196;
 			}
 			
 			/* *** */
@@ -220,9 +228,9 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 	 }
 	 if (arg0.getKeyCode() == 38) { //upward arrow
 		 bJump = true;
-		 if (bRight==true && rightorleft == 1 && Y==196) {
+		 if (bRight==true && rightorleft == 1 && guyY==196) {
 			 rightJumporleftJump=1; // right jump
-		 } else if (bLeft==true && rightorleft==2 && Y==196){
+		 } else if (bLeft==true && rightorleft==2 && guyY==196){
 			 rightJumporleftJump=2; // left jump
 		 }
 		
@@ -235,24 +243,24 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		if (arg0.getKeyCode() == 37) {
 			 bLeft = false;
 			 if (rightorleft==2 && bRight==false) {
-				 chrctr = w0r; //position to which he snaps back 
+				 state = w0r; //position to which he snaps back 
 			 } else {
 				 rightorleft=1;
-				 chrctr=w0;
+				 state=w0;
 			 }
 		}
 			if (arg0.getKeyCode() == 39) {
 				 bRight = false;
 				 if (rightorleft==1 && bLeft==false) {
-					 chrctr = w0;//position to which he snaps back
+					 state = w0;//position to which he snaps back
 				 } else {
 					 rightorleft=2;
-					 chrctr=w0r;
+					 state=w0r;
 				 }
 			 }
 	}
 	
 	@Override
 	public void keyTyped(KeyEvent arg0) {}//inherited abstract method
-
+	
 }
