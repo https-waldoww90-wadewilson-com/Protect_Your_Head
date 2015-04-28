@@ -1,5 +1,6 @@
 /* TODO
- * Map movement to dynamic landscape
+ * Map movement to dynamic landscape better
+ * Fix levitation glitch
  */
 package general;
 
@@ -14,10 +15,10 @@ import java.util.List;
 public class Main extends Game_loop {
     // private
 	private static final int FRAME_WIDTH = 600;
-    private static final int FRAME_HEIGHT = 420;
+    private static final int FRAME_HEIGHT = 400;
+    public static final int GROUND_HEIGHT=100;
     private static Color background= new Color(135,206,250);
     private static Color foreground= new Color(35,139,34);
-    private static final int GROUND_HEIGHT=100;
     private static final int NUM_BLOCKS = FRAME_WIDTH*GROUND_HEIGHT;
     private static final int NUM_OBSTACLES=lvl*10;
     private static Obstacles[] obstacleArray = new Obstacles[NUM_OBSTACLES];
@@ -50,8 +51,8 @@ public class Main extends Game_loop {
         for (int i=0, k=0;i<FRAME_WIDTH;i+=20) {
         	for (int j=0;j<GROUND_HEIGHT;j+=20) {
         		Rectangle block = new Rectangle();
-        		block.setLocation(i, FRAME_HEIGHT-j);
         		block.setSize(19, 19);
+        		block.setLocation(i, FRAME_HEIGHT-block.height-j);
         		groundArray[k]=block;
         		k++;
         	}   	
@@ -96,7 +97,7 @@ public class Main extends Game_loop {
     	if (squareX+squareSize >= guyX() && squareX <= guyX() + guyWidth()) {
     		if (squareY+squareSize >= guyY() && squareY <= guyY() + guyHeight()) {
     			score+=squareVal;
-    			System.out.println(score);
+    			//System.out.println(score);
     		    return true;
     		} 
     	}

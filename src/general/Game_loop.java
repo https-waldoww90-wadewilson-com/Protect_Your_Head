@@ -18,6 +18,7 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 	public static int score=0, lvl=1, goal=lvl*150;
 	// private
 	private static int guyX, guyY;
+	private static int initPos;
 	private static int guyHeight, guyWidth;
 	private int timer;
 	private int rightorleft; // '1' if facing right; '2' if facing left; never '0'
@@ -39,16 +40,72 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		return guyWidth;
 	}
 	public boolean guygroundCollision() {
-		//System.out.println(guyX() + " " + guyY());
 		for (Rectangle block:Main.groundList) {
+			//System.out.println(block.y);
 			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {
 	    		if (guyY+guyHeight >= block.y && guyY <= block.y + block.height) {
-					return true;
+	    			if (block.y-(guyY+guyHeight)==0) {
+	    				//System.out.println(block.y + " " + (guyY+guyHeight));
+	    				return true;
+	    			}  		
 	    		} 
 	    	}		
 		}
 		return false;
     }
+	public int adjustguyY() {
+		Rectangle temp = new Rectangle();
+		temp.x=10000;
+		temp.y=10000;
+		for (Rectangle block:Main.groundList) {
+			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
+	    		if (Math.abs(guyX+guyWidth-19-(block.x+block.width))<Math.abs(guyX+guyWidth-(temp.x+temp.width))) {
+	    			temp=block;
+	    		}
+	    	}		
+		}
+		for (Rectangle block:Main.groundList) {
+			if (block.x==temp.x) {			
+	    		if (block.y<temp.y) {
+	    			temp=block;
+	    		}
+	    	}		
+		}
+		boolean ideal=true;
+		int count=0;
+		for (Rectangle block:Main.groundList) {
+			ideal=true;
+			count=0;
+			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
+	    		if (block.y==temp.y && block!=temp) {
+	    			count++;
+	    			for (Rectangle jBlock:Main.groundList) {
+	    				if (jBlock.x==block.x && jBlock!=block) {
+	    					if (jBlock.y>block.y) {
+	    						ideal=false;
+	    						break;
+	    					}
+	    				}
+	    			}
+	    		}
+	    	}		
+		}
+		if (ideal==true && count==0) {
+			ideal=false;
+		}
+		if (ideal==true) {
+			System.out.println("YYHH");
+			return temp.y;
+		}
+		for (Rectangle block:Main.groundList) {
+			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
+	    		if (block.y<temp.y) {
+	    			temp=block;
+	    		}
+	    	}		
+		}
+		return temp.y;
+	}
 	@Override
 	public void run() {
 		try {
@@ -71,7 +128,8 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		rightJumporleftJump=0;
 		state = w0;
 		guyX=50;
-		guyY=196;
+		initPos=Main.frameHeight()-Main.GROUND_HEIGHT-guyHeight+20;
+		guyY=initPos;
 		while (true) {	
 			//System.out.println(X+ " " + Y);
 			
@@ -118,38 +176,25 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 			/* END: STATE CONTROLLER */
 			
 			/* START: HORIZONTAL MOVEMENT */
-			if (bJump == true && bRight == true && bLeft == true) {
+			if (bJump == true && bRight == true && bLeft == true) { //bunny hop
 				if (rightJumporleftJump == 1) {
-					if (guyX<=516) {
+					if (guyX<Main.frameWidth()) {
 						guyX+=4;	
-					} else {
-						guyX=-20;
-						guyX+=4;
 					}
 						
 				} else if (rightJumporleftJump==2) {
-					if (guyX>=-11) {
+					if (guyX>0) {
 						guyX-=4;	
-					} else {
-						guyX=520;
-						guyX-=4;
 					}
 				}
 			} else {
-				if (bLeft == true && guyY>=196 || rightJumporleftJump == 2 && bJump==true) {
-					if (guyX>=-10) {
+				if ((bLeft==true && guygroundCollision()==true) || (bLeft == true && bJump==true) || rightJumporleftJump==2) {
+					if (guyX>0) {
 						guyX-=5;
-					} else {
-						guyX=520;
-						guyX-=5;
-					}
-					//System.out.println(X);
+					} 
 				}
-				if (bRight == true && guyY>=196|| rightJumporleftJump == 1 && bJump==true) {
-					if (guyX<=515) {
-						guyX+=5;
-					} else {
-						guyX=-20;
+				if ((bRight==true && guygroundCollision()==true) || (bRight == true && bJump==true) || rightJumporleftJump==1 ) {
+					if (guyX+guyWidth<Main.frameWidth()) {
 						guyX+=5;
 					}	
 					//System.out.println(X);
@@ -157,14 +202,15 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 			}	
 			/* END: HORIZONTAL MOVEMENT */
 			
-			if (bJump == true) {
+			/* START: JUMPING MECHANICS */
+			if (bJump == true) { // airborne
 				dCounter +=0.05;
 				guyY = guyY + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
 				//*4 -> amplitude of jump
-				if(dCounter>=7){	
+				if(guygroundCollision()==true){	
+					dCounter=4;//bottom of jump		
 					bJump=false;
 					rightJumporleftJump=0;
-					dCounter=4;//bottom of jump		
 					if (rightorleft == 1) {		
 						state = w0;//position to which he snaps back
 					} else {
@@ -172,8 +218,8 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 					}
 				} 
 				
-				if (rightorleft==1 && guyY!=196) {
-					if (bJump == true && bRight == true && bLeft == true) {
+				if (rightorleft==1) {
+					if (bRight == true && bLeft == true) {
 						state = w0;
 					} else {
 						if (rightJumporleftJump==0 && bRight==false) {
@@ -184,8 +230,8 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 					}						
 				}
 				
-				if (rightorleft==2 && guyY!=196) {				
-					if (bJump == true && bRight == true && bLeft == true) {
+				if (rightorleft==2) {				
+					if (bRight == true && bLeft == true) {
 						state = w0r;
 					} else {
 						if (rightJumporleftJump==0 && bLeft == false) {
@@ -196,10 +242,17 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 					}
 				}
 			}	
+			/* END: JUMPING MECHANICS */
 			
-			if (guyY >= 196) {
-				guyY=196;
-			}
+			if (bJump!=true) {
+				if (adjustguyY()!=10000) {
+					guyY = adjustguyY()-guyHeight;
+				} else {
+					guyY+=5;
+				}
+			}	
+			
+			
 			
 			/* *** */
 			repaint();
@@ -218,22 +271,29 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		 bLeft = true;
 		 if (bRight != true) {
 			 rightorleft = 2;
-		 }		
+		 }	
+		 if (rightJumporleftJump==1 && bRight==false) {
+			 rightJumporleftJump=0;
+		 }
 	 }
 	 if (arg0.getKeyCode() == 39) { //right arrow
 		 bRight = true;
 		 if (bLeft!=true) {
 			 rightorleft = 1;
-		 }	 	 
+		 }	 	
+		 if (rightJumporleftJump==2 && bLeft==false) {
+			 rightJumporleftJump=0;
+		 }
 	 }
 	 if (arg0.getKeyCode() == 38) { //upward arrow
-		 bJump = true;
-		 if (bRight==true && rightorleft == 1 && guyY==196) {
-			 rightJumporleftJump=1; // right jump
-		 } else if (bLeft==true && rightorleft==2 && guyY==196){
-			 rightJumporleftJump=2; // left jump
-		 }
-		
+		 if (guygroundCollision()==true) {
+			 bJump = true;
+			 if (bRight==true && rightorleft == 1) {
+				 rightJumporleftJump=1; // right jump
+			 } else if (bLeft==true && rightorleft==2){
+				 rightJumporleftJump=2; // left jump
+			 }
+		 }	 
 	 }
 
 	}
