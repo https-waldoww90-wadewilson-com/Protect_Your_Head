@@ -17,9 +17,9 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 	public BufferedImage state; // animation state
 	public static int score=0, lvl=1, goal=lvl*150;
 	// private
-	private static int guyX, guyY;
+	private static int guyX, guyY, guyYpreJump;
 	private static int initPos;
-	private static int guyHeight, guyWidth;
+	private static int guyHeight, guyWidth, footAdjustment=10, feetWidth=20;
 	private int timer;
 	private int rightorleft; // '1' if facing right; '2' if facing left; never '0'
 	private int rightJumporleftJump; // '1' if its a right jump; '2' if its a left jump; '0' if its neither
@@ -42,7 +42,7 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 	public boolean guygroundCollision() {
 		for (Rectangle block:Main.groundList) {
 			//System.out.println(block.y);
-			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {
+			if (guyX+footAdjustment+feetWidth >= block.x && guyX+footAdjustment <= block.x + block.width) {
 	    		if (guyY+guyHeight >= block.y && guyY <= block.y + block.height) {
 	    			if (block.y-(guyY+guyHeight)==0) {
 	    				//System.out.println(block.y + " " + (guyY+guyHeight));
@@ -58,8 +58,8 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		temp.x=10000;
 		temp.y=10000;
 		for (Rectangle block:Main.groundList) {
-			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
-	    		if (Math.abs(guyX+guyWidth-19-(block.x+block.width))<Math.abs(guyX+guyWidth-(temp.x+temp.width))) {
+			if (guyX+footAdjustment+feetWidth >= block.x && guyX+footAdjustment <= block.x + block.width) {			
+	    		if (Math.abs(guyX+footAdjustment+feetWidth-(block.x+block.width))<Math.abs(guyX+footAdjustment+feetWidth-(temp.x+temp.width))) {
 	    			temp=block;
 	    		}
 	    	}		
@@ -76,7 +76,7 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		for (Rectangle block:Main.groundList) {
 			ideal=true;
 			count=0;
-			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
+			if (guyX+footAdjustment+feetWidth >= block.x && guyX+footAdjustment <= block.x + block.width) {			
 	    		if (block.y==temp.y && block!=temp) {
 	    			count++;
 	    			for (Rectangle jBlock:Main.groundList) {
@@ -94,11 +94,10 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 			ideal=false;
 		}
 		if (ideal==true) {
-			System.out.println("YYHH");
 			return temp.y;
 		}
 		for (Rectangle block:Main.groundList) {
-			if (guyX+guyWidth >= block.x && guyX <= block.x + block.width) {			
+			if (guyX+footAdjustment+feetWidth >= block.x && guyX+footAdjustment <= block.x + block.width) {			
 	    		if (block.y<temp.y) {
 	    			temp=block;
 	    		}
@@ -128,7 +127,7 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 		rightJumporleftJump=0;
 		state = w0;
 		guyX=50;
-		initPos=Main.frameHeight()-Main.GROUND_HEIGHT-guyHeight+20;
+		initPos=Main.frameHeight()-Main.GROUND_HEIGHT-guyHeight;
 		guyY=initPos;
 		while (true) {	
 			//System.out.println(X+ " " + Y);
@@ -204,8 +203,17 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 			
 			/* START: JUMPING MECHANICS */
 			if (bJump == true) { // airborne
-				dCounter +=0.05;
-				guyY = guyY + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
+				if (guyY<=guyYpreJump) {
+					dCounter +=0.05;
+					guyY = guyY + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
+					//System.out.println(dCounter + " " + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4));
+				} else {
+					if (adjustguyY()!=10000) {
+						guyY = guyY + (int) ((Math.sin(dCounter) + Math.cos(dCounter)) * 4);
+					} else {
+						bJump=false;
+					}
+				}
 				//*4 -> amplitude of jump
 				if(guygroundCollision()==true){	
 					dCounter=4;//bottom of jump		
@@ -288,6 +296,7 @@ public class Game_loop extends Applet implements Runnable, KeyListener {
 	 if (arg0.getKeyCode() == 38) { //upward arrow
 		 if (guygroundCollision()==true) {
 			 bJump = true;
+			 guyYpreJump=guyY;
 			 if (bRight==true && rightorleft == 1) {
 				 rightJumporleftJump=1; // right jump
 			 } else if (bLeft==true && rightorleft==2){

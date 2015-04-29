@@ -1,6 +1,5 @@
 /* TODO
- * Map movement to dynamic landscape better
- * Fix levitation glitch
+ * reset position once score is reached or guy dies
  */
 package general;
 
